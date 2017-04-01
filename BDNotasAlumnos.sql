@@ -5,7 +5,7 @@ CREATE TABLE [nombre de la tabla](
 [nombre del atributo] [tipo] [opciones], 
 [nombre del atributo] [tipo] [opciones], 
 [otras columnas. . . . . . . . ]
-);*/
+); */
 
 /*Donde [opciones] puede ser: NOT NULL, UNIQUE, DEFAULT o PRIMARY KEY*/
 
@@ -230,6 +230,14 @@ SELECT AVG(nota)
 FROM Notas
 WHERE fecha between '2013-01-01' and '2013-12-31';
 
+/*AVG - Hallar el nombre de los alumnos con promedio de notas mayores a 3 en el año 2013*/
+
+SELECT nAlum, AVG(nota)
+FROM Alumno NATURAL JOIN Notas
+WHERE fecha between '2013-01-01' and '2013-12-31'	/*Condición general*/
+GROUP BY nAlum
+HAVING AVG (nota)>3.0; 					/*Condición específica para cada grupo*/
+
 /*Por medio de una subconsulta, obtenga el nombre y departamento de las asignaturas que han sido aprobadas durante el año 2013.*/
 
 SELECT nombreA, depto 
@@ -271,7 +279,6 @@ CREATE VIEW VistaAlumno AS
 	FROM Alumno;
 
 SELECT * FROM VistaAlumno
-
 
 SELECT * FROM ASIGNATURA
 SELECT * FROM NOTAS
