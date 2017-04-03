@@ -69,6 +69,7 @@ INSERT INTO Ciudad VALUES (6510, 'Bolivar', 'Quito', 'Ecuador');
 INSERT INTO Ciudad VALUES (8412, 'Arequipa', 'AQP', 'Perú');
 INSERT INTO Ciudad VALUES (5148, 'Bogotá', 'Cundinamarca', 'Colombia');
 INSERT INTO Ciudad VALUES (5464, 'El Vergel', 'Sincasur', 'Venezuela');
+INSERT INTO Ciudad VALUES (3569, 'Villamil', 'VLL', 'Perú');
 
 INSERT INTO Vuelo VALUES (9865, 5184, '1:15:23', 0256);
 INSERT INTO Vuelo VALUES (4802, 1840, '1:21:52', 0256);
@@ -81,6 +82,7 @@ INSERT INTO ProgramaVuelo VALUES (4802, '2014-11-21', 1540, '10:40:54', '1:19:20
 INSERT INTO ProgramaVuelo VALUES (6584, '2013-02-24', 5610, '09:24:30', '2:17:47');
 INSERT INTO ProgramaVuelo VALUES (5010, '2015-10-02', 8721, '07:35:36', '1:38:21');
 INSERT INTO ProgramaVuelo VALUES (8420, '2014-08-17', 0254, '03:27:47', '0:45:23');
+INSERT INTO ProgramaVuelo VALUES (5010, '2014-11-02', 8721, '12:21:52', '1:38:21');
 
 INSERT INTO Avion VALUES (5168, 350, 'Pasajeros1');
 INSERT INTO Avion VALUES (1540, 310, 'Pasajeros2');
@@ -98,29 +100,17 @@ INSERT INTO TipoAvion VALUES ('Pasajeros5', 170, 'Indonesian Aerospace', 550);
 la hora de salida y la fecha de todos los vuelos programados para el mes de noviembre de 2014, que salen del aeropuerto de Argentina 
 hacia algún aeropuerto ubicado en Perú.*/
 
-WITH CiudadLlegada(aeropuertoLlegada, ciudadArribo) AS
-	(SELECT codAeroptoLlega, nombreCiu
-	FROM Aeropuerto INNER JOIN Vuelo ON codAeropto=codAeroptoLlega NATURAL JOIN Ciudad)
-SELECT *
-FROM Aeropuerto INNER JOIN Vuelo ON codAeropto=codAeroptoSale INNER JOIN CiudadLlegada ON codAeropto=aeropuertoLlegada
-WHERE 
+/*Hecho a través de relaciones derivadas:
+Una nueva relación con los datos de la ciudad de salida y luego otra nueva relación con los datos de la ciudad de llegada. Se renombran
+sus atributos para poder hacer el NATURAL JOIN y por último realizar las condiciones necesarias en el WHERE.
+*/
 
-WITH CiudadSalida(numeroVuelo, aeropuertoSalida, ciudadSalida, horaSalida, fechaSalida) AS
-	(SELECT nroVuelo, codAeroptoSale, nombreCiu, horaSalida, fecha
-	FROM Aeropuerto INNER JOIN Vuelo ON codAeropto=codAeroptoSale NATURAL JOIN ProgramaVuelo NATURAL JOIN Ciudad)
-WITH CiudadLlegada(numeroVuelo, aeropuertoLlegada, ciudadArribo) AS
-	(SELECT nroVuelo, codAeroptoLlega, nombreCiu
-	FROM Aeropuerto INNER JOIN Vuelo ON codAeropto=codAeroptoLlega NATURAL JOIN Ciudad)
-SELECT *
-FROM CiudadSalida, CiudadLlegada
-
-
-
-
-
-
-
-DROP  TABLE AVION
-
-delete from vuelo
-select * from tipoavion
+SELECT numeroVuelo, aeropuertoSalida, ciudadSalida, horaSalida, fechaSalida, numeroVuelo, aeropuertoLlegada, ciudadArribo
+FROM 	(SELECT nroVuelo, codAeroptoSale, nombreCiu, horaSalida, fecha, paisCiu
+	FROM Aeropuerto INNER JOIN Vuelo ON codAeropto=codAeroptoSale NATURAL JOIN ProgramaVuelo NATURAL JOIN Ciudad) AS 
+	CiudadSalida(numeroVuelo, aeropuertoSalida, ciudadSalida, horaSalida, fechaSalida, paisSalida)
+	NATURAL JOIN 
+	(SELECT nroVuelo, codAeroptoLlega, nombreCiu, paisCiu
+	FROM Aeropuerto INNER JOIN Vuelo ON codAeropto=codAeroptoLlega NATURAL JOIN Ciudad) AS
+	CiudadLlegada(numeroVuelo, aeropuertoLlegada, ciudadArribo, paisLlegada)
+WHERE fechaSalida BETWEEN '2014-11-01' AND '2014-11-30' AND paisSalida='Argentina' AND paisLlegada='Perú';
