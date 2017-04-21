@@ -67,5 +67,11 @@ UPDATE Alumnos
 SET nAlum = '0147'
 WHERE nombre = 'Juan';
 
+/*SUBCONSULTAS CORELACIONADAS O SINCRONIZADAS*/
+/*Obtener el nombre de los alumnos, la asignatura del mismo y la nota cuya nota supera la media de las notas de su asignatura*/
 
-		
+SELECT nombre, nombreA, nota
+FROM Alumnos NATURAL JOIN Notas AS N NATURAL JOIN Asignatura AS A	/*MUY IMPORTANTE LOS ALIAS*/
+WHERE N.nota > (SELECT AVG (nota)
+		FROM Asignatura AS B NATURAL JOIN Notas
+		WHERE B.nombreA = A.nombreA);
