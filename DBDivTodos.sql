@@ -75,3 +75,17 @@ FROM Alumnos NATURAL JOIN Notas AS N NATURAL JOIN Asignatura AS A	/*MUY IMPORTAN
 WHERE N.nota > (SELECT AVG (nota)
 		FROM Asignatura AS B NATURAL JOIN Notas
 		WHERE B.nombreA = A.nombreA);
+
+/*Obtener el nombre, apellido y la cantidad de asignaturas matriculadas de aquellos estudiantes que tienen más de 2 materias matriculadas*/
+
+SELECT nombre, apellidos, COUNT(codA) AS materiasMatriculadas
+FROM Alumnos NATURAL JOIN Notas NATURAL JOIN Asignatura
+--ORDER BY nombre, apellidos (GROUP BY agrupa y deja implíctos los demás valores por fuera de la agrupación)
+GROUP BY nombre, apellidos
+HAVING COUNT(codA)>2;
+
+/*Obtener la cantidad de alumnos matriculados a cada asignatura*/
+
+SELECT nombreA, COUNT(nombre)
+FROM Alumnos NATURAL JOIN Notas NATURAL JOIN Asignatura
+GROUP BY nombreA
