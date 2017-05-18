@@ -273,12 +273,12 @@ CREATE TRIGGER Precio_Habitacion AFTER INSERT ON Habitacion FOR EACH ROW EXECUTE
 el error [54001] ERROR: límite de profundidad de stack alcanzado se recomienda especificar el campo afectado, en este caso: AFTER UPDATE OF tipoHabitacion ON Habitacion*/
 CREATE TRIGGER Precio_Habitacion2 AFTER UPDATE OF tipoHabitacion ON Habitacion FOR EACH ROW EXECUTE PROCEDURE Precio_Habitacion();
 
-/*Función que determina que el depósito de una reserva sea el 10% del costo de la habitación, que la fecha de la reserva sea la actualy que cambie el estado de una 
+/*Función que determina que el depósito de una reserva sea el 10% del costo de la habitación, que la fecha de la reserva sea la actual y que cambie el estado de una 
 habitación asignda a 'Reservada' sólo si está disponible. */
 CREATE OR REPLACE FUNCTION Insercion_Reserva_Estancia() RETURNS TRIGGER AS $$
 DECLARE
 
---Variables en las cuales se almacenará el precio y el estado de cada habitación según el nro de habitación y el hotel de la tupla insertada:
+--Variables donde se almacena el precio y el estado de cada habitación según el nro de habitación y el hotel de la tupla insertada:
  precio_habitacion FLOAT;
  estado_habitacion VARCHAR(20);
  
@@ -319,7 +319,11 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER Insercion_Reserva_Estancia AFTER INSERT ON Reserva_Estancia FOR EACH ROW EXECUTE PROCEDURE Insercion_Reserva_Estancia();
 
---Función para cuando un cliente cumple la reserva, es decir, cuando la reserva se convierte en estancia.
+/*Función para cuando se realice una actualización en R_E. Tal actualización puede ser cuando el cliente se hospeda en el hotel y cuando finaliza su estancia. Cabe
+destacar que un cliente finaliza su estancia en el hotel cuando se le ha hecho su factura, para ello el atributo fechaSalida toma el valor en que se realiza la factura
+(fechaFactura). El procedimiento anterior se realiza en el trigger Insercion_Factura. También, para destacar, cuando el atributo fechaSalida es llenado las tuplas afectadas
+deben ser respaldadas, esto es el respaldo de las reservas del cliente, y también el estado de las habitaciones ocupadas deben cambiar a 'Disponible'. Para realizar el 
+proceso de cambio de estado a 'Disponible' se emplea el trigger Eliminacion_Reserva_Estancia, el cual sigue a esta función.*/
 CREATE OR REPLACE FUNCTION Actualizacion_Reserva() RETURNS TRIGGER AS $$
 DECLARE
 BEGIN
@@ -336,10 +340,12 @@ BEGIN
 reservas y se hace su respaldo en Respaldo_Reserva_Estancia. */
  IF NEW.fechaSalida IS NOT NULL
  THEN
-  UPDATE Habitacion
-  SET estado='Disponible'
-  WHERE nroHabitacion=NEW.nroHabitacion AND codigoHotel=NEW.codigoHotel;
 
+--Cambiar el estado de la habitación a 'Disponible'
+ UPDATE Habitacion
+ SET estado='Disponible'
+ WHERE nroHabitacion=OLD.nroHabitacion AND codigoHotel=OLD.codigoHotel;
+ 
 --Tener en cuenta la PK en la tabla respaldo; la PK no se tiene en cuenta en la siguiente inserción ya que tal PK es autoincrementada.
   INSERT INTO Respaldo_Reserva_Estancia (codigoReserva, codigoHotel, nroHabitacion, DNI, fechaReserva, fechaLimite, deposito, fechaIngreso, fechaSalida)
   VALUES (NEW.codigoReserva, NEW.codigoHotel, NEW.nroHabitacion, NEW.DNI, NEW.fechaReserva, NEW.fechaLimite, NEW.deposito, NEW.fechaIngreso, NEW.fechaSalida);
@@ -354,6 +360,24 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER Actualizacion_Reserva AFTER UPDATE ON Reserva_Estancia FOR EACH ROW EXECUTE PROCEDURE Actualizacion_Reserva();
+
+/*Función para que cada vez que una tupla se elimine se active el trigger Eliminacion_Reserva_Estancia, el cual cambia el estado de la habitación ocupada a 'Disponible'.
+Esta es función es útil para cuando el cliente reserva 3 habitaciones y sólo ocupa 2; las habitaciones que no ocupa debe de cambiar su estado a 'Disponible' y además estas
+no tendrán respaldo.*/
+CREATE OR REPLACE FUNCTION Eliminacion_Reserva_Estancia() RETURNS TRIGGER AS $$
+DECLARE 
+BEGIN
+
+ UPDATE Habitacion
+ SET estado='Disponible'
+ WHERE nroHabitacion=OLD.nroHabitacion AND codigoHotel=OLD.codigoHotel;
+
+ RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER Eliminacion_Reserva_Estancia AFTER DELETE ON Reserva_Estancia FOR EACH ROW EXECUTE PROCEDURE Eliminacion_Reserva_Estancia();
+
 
 --Función que determina que un empleado sea del respectivo hotel de un servicio y que además este sea animador:
 CREATE OR REPLACE FUNCTION Insercion_Servicios() RETURNS TRIGGER AS $$
@@ -391,6 +415,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER Insercion_Servicios AFTER INSERT ON Servicios FOR EACH ROW EXECUTE PROCEDURE Insercion_Servicios();
+/*Trigger para cuando se actualiza el codigo de empleado; la actualización por tanto debe cumplir la condición de la función Insercion_Servicios() */
 CREATE TRIGGER Insercion_Servicios2 AFTER UPDATE OF codigoEmpleado ON Servicios FOR EACH ROW EXECUTE PROCEDURE Insercion_Servicios();
 
 /*Función que determina los servicios o actividades prestadas a un cliente. Se debe tener en cuenta que una actividad puede ser asignada sólo si el cliente está hospedado
@@ -568,6 +593,19 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER Insercion_Factura AFTER INSERT ON Factura FOR EACH ROW EXECUTE PROCEDURE Insercion_Factura();
+
+
+
+CREATE OR REPLACE FUNCTION Insercion_Actividades() RETURNS TRIGGER AS $$
+DECLARE 
+BEGIN
+
+ RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
 
 
 
