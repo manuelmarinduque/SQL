@@ -296,7 +296,10 @@ CREATE TRIGGER Precio_Habitacion AFTER INSERT ON Habitacion FOR EACH ROW EXECUTE
 el error [54001] ERROR: límite de profundidad de stack alcanzado se recomienda especificar el campo afectado, en este caso: AFTER UPDATE OF tipoHabitacion ON Habitacion*/
 CREATE TRIGGER Precio_Habitacion2 AFTER UPDATE OF tipoHabitacion ON Habitacion FOR EACH ROW EXECUTE PROCEDURE Precio_Habitacion();
 
-/*Función que determina que un cliente sólo pueda hacer reservas de habitaciones en el mismo límite de tiempo y en el mismo hotel.*/
+/*Función que determina que un cliente sólo pueda hacer reservas de habitaciones en un hotel durante el mismo límite de tiempo. Cabe destacar que el cliente puede realizar varias 
+reservas en cada uno de los hoteles al mismo tiempo, por lo cual se debe garantizar que las reservas en cada uno sean por el mismo periodo de tiempo. Por ejempli, el cliente 001 solicita 
+varias reservas en el hotel Central por un periodo de 3 días y a la vez solicita varias reservas en el hotel Costa del Sol por un periodo de 5 días; se debe garantizar que todas las reservas
+solicitadas por este cliente en el hotel Central sean por el mismo periodo de tiempo y que a su vez también lo sean todas las reservas hechas en el hotel Costa del Sol.*/
 CREATE OR REPLACE FUNCTION Insertar() RETURNS TRIGGER AS $$
 DECLARE 
 
@@ -309,27 +312,28 @@ fecha_limite DATE;
 
 BEGIN
 
+--Tener en cuenta la condicón en el WHERE en cada una de las sgtes selecciones. Tal condición garantiza una tupla única.
 SELECT codigoHotel INTO hotel
 FROM Reserva_Estancia
-WHERE DNI=NEW.DNI
+WHERE DNI=NEW.DNI AND codigoHotel=NEW.codigoHotel
 GROUP BY codigoHotel;
 
 SELECT DNI INTO cliente
 FROM Reserva_Estancia
-WHERE DNI=NEW.DNI
+WHERE DNI=NEW.DNI AND codigoHotel=NEW.codigoHotel
 GROUP BY DNI;
 
 SELECT fechaLimite INTO fecha_limite
 FROM Reserva_Estancia
-WHERE DNI=NEW.DNI
+WHERE DNI=NEW.DNI AND codigoHotel=NEW.codigoHotel
 GROUP BY fechaLimite;
 
-IF NEW.DNI=cliente AND NEW.codigoHotel<>hotel
+/*Si el cliente previamente ya tiene hecha una reserva en un hotel, entonces se compara los valores codigoHotel, DNI y fechaLimite de la nueva tupla a insertar con 
+los valores de la previa reserva hecha, esto con el fin de obtener y comparar la fecha límite de tal reserva con la fecha límite de la nueva tupla. Si ambos valores son
+diferentes (NEW.fechaLimite<>fecha_limite), entonces la tupla o nueva reserva no será insertada */
+IF (NEW.DNI=cliente AND NEW.codigoHotel=hotel) AND NEW.fechaLimite<>fecha_limite
 THEN
- RAISE EXCEPTION 'No se puede realizar la reserva. Hotel diferente.';
-ELSIF NEW.DNI=cliente AND NEW.fechaLimite<>fecha_limite
- THEN
-  RAISE EXCEPTION 'No se puede realizar la reserva. Fecha límite diferente.';
+ RAISE EXCEPTION 'No se puede realizar la reserva. La fecha límite es diferente. ';
 END IF;
 
  RETURN NEW;
